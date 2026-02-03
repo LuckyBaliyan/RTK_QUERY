@@ -18,6 +18,21 @@ export const api = createApi({
                 body:task,
             }),
             invalidatesTags:["Tasks"],
+            //Handling Optimistic Updates
+            async onQueryStarted(task,{dispatch,queryFulfilled}){
+                const patchResult = dispatch(
+                    api.util.updateQueryData("getTasks",undefined,(draft)=>{
+                        draft.unshift({id:crypto.randomUUID(), ...task});
+                    })
+                );
+
+                try{
+                    await queryFulfilled;
+                }
+                catch{
+                    patchResult.undo();
+                }
+            }
         }),
         updateTask:builder.mutation({
             query:({id,...updatedTask})=>({
@@ -26,6 +41,22 @@ export const api = createApi({
                 body:updatedTask,
             }),
             invalidatesTags:["Tasks"],
+            async onQueryStarted(task,{dispatch,queryFulfilled}){
+                const patchResult = dispatch(
+                    api.util.updateQueryData("getTasks",undefined,(tasksList)=>{
+                        const taskIndx = tasksList.findIndex((el)=> el.id === task.id);
+                        tasksList[taskIndx] = {...tasksList[taskIndx], ...task};
+                      }
+                    )
+                );
+
+                try{
+                    await queryFulfilled;
+                }
+                catch{
+                    patchResult.undo();
+                }
+            }
         }),
         deleteTask:builder.mutation({
             query:(id)=>({
@@ -33,8 +64,24 @@ export const api = createApi({
                 method:"DELETE",
             }),
             invalidatesTags:["Tasks"],
+            async onQueryStarted(id,{dispatch,queryFulfilled}){
+                const patchResult = dispatch(
+                    api.util.updateQueryData("getTasks",undefined,(tasksList)=>{
+                        const taskIndx = tasksList.findIndex((t)=>t.id === id);
+                        tasksList.splice(taskIndx,1);
+                    })
+                );
+
+                try{
+                    await queryFulfilled;
+                }
+                catch{
+                    patchResult.undo();
+                }
+            }
         }),
     }),
 });
 
-export const {useGetTasksQuery,useAddTaskMutation, useUpdateTaskMutation, useDeleteTaskMutation} = api;
+export const {useGetTasksQuery,useAddTaskMutation, 
+useUpdateTaskMutation, useDeleteTaskMutation} = api;
